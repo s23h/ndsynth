@@ -476,8 +476,7 @@ input[type="range"] {
   <div class="transport">
     <button id="playBtn">Play</button>
     <button id="clearBtn">Clear</button>
-    <label>BPM <input type="range" id="bpmSlider" min="60" max="200" value="120"><span class="val" id="bpmVal">120</span></label>
-    <label>Swing <input type="range" id="swingSlider" min="0" max="80" value="0"><span class="val" id="swingVal">0%</span></label>
+    <label>BPM <input type="range" id="bpmSlider" min="60" max="200" value="95"><span class="val" id="bpmVal">95</span></label>
   </div>
 
   <div class="presets">
@@ -524,16 +523,34 @@ for (let i = 0; i < noiseData.length; i++) noiseData[i] = Math.random() * 2 - 1;
 // Sound definitions — each drum is layers of oscillators and/or filtered noise
 const drums = [
   { name: 'Kick', key: 'q', color: '#e85d75', prob: 100,
-    layers: [{ type: 'osc', wave: 'sine', freq: 160, freqEnd: 40, freqDecay: 0.12, decay: 0.4, gain: 1 }] },
+    layers: [
+      { type: 'osc', wave: 'sine', freq: 150, freqEnd: 50, freqDecay: 0.1, decay: 0.35, gain: 1.0 }
+    ] },
   { name: 'Snare', key: 'w', color: '#5bc0be', prob: 100,
     layers: [
-      { type: 'noise', filter: 'highpass', filterFreq: 1000, filterQ: 1, decay: 0.15, gain: 0.7 },
-      { type: 'osc', wave: 'triangle', freq: 200, freqEnd: 100, freqDecay: 0.05, decay: 0.1, gain: 0.5 }
+      { type: 'osc', wave: 'triangle', freq: 180, freqEnd: 90, freqDecay: 0.04, decay: 0.1, gain: 0.5 },
+      { type: 'noise', filter: 'highpass', filterFreq: 2000, filterQ: 1, decay: 0.15, gain: 0.6 }
     ] },
   { name: 'Hat', key: 'e', color: '#f4d35e', prob: 100,
-    layers: [{ type: 'noise', filter: 'bandpass', filterFreq: 10000, filterQ: 1, decay: 0.06, gain: 0.3 }] },
-  { name: 'Clap', key: 'r', color: '#9b5de5', prob: 100,
-    layers: [{ type: 'noise', filter: 'bandpass', filterFreq: 2500, filterQ: 0.5, decay: 0.08, gain: 0.4, count: 3 }] }
+    layers: [
+      { type: 'noise', filter: 'highpass', filterFreq: 8000, filterQ: 1, decay: 0.05, gain: 0.3 }
+    ] },
+  { name: 'Open Hat', key: 'r', color: '#f4a83e', prob: 100,
+    layers: [
+      { type: 'noise', filter: 'highpass', filterFreq: 7000, filterQ: 0.8, decay: 0.3, gain: 0.2 }
+    ] },
+  { name: 'Clap', key: 't', color: '#9b5de5', prob: 100,
+    layers: [
+      { type: 'noise', filter: 'bandpass', filterFreq: 1500, filterQ: 0.7, decay: 0.12, gain: 0.5, count: 3 }
+    ] },
+  { name: 'Hi Tom', key: 'y', color: '#06d6a0', prob: 100,
+    layers: [
+      { type: 'osc', wave: 'sine', freq: 250, freqEnd: 130, freqDecay: 0.1, decay: 0.2, gain: 0.6 }
+    ] },
+  { name: 'Lo Tom', key: 'u', color: '#118ab2', prob: 100,
+    layers: [
+      { type: 'osc', wave: 'sine', freq: 150, freqEnd: 70, freqDecay: 0.12, decay: 0.28, gain: 0.7 }
+    ] }
 ];
 
 // Synth engine
@@ -584,9 +601,39 @@ const KEY_POOL = 'qwertyuiopasdfghjklzxcvbnm1234567890'.split('');
 const COLORS = ['#e85d75', '#5bc0be', '#f4d35e', '#9b5de5', '#f77f00', '#06d6a0', '#118ab2', '#ef476f', '#ffd166', '#83c5be'];
 const STORAGE_KEY = 'drumsynth';
 
+// Built-in presets — same drum kit, different patterns
+const BUILTIN_PRESETS = {
+  'Gospel Chops': {
+    bpm: 95,
+    //            step:  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+    pattern: [
+      /* Kick    */ [ -1,  0,  0, 25,  0,  0, -1,  0,  0,  0, 50,  0, -1,  0,  0, 25],
+      /* Snare   */ [  0, 25,  0, 25, -1, 25,  0, 50,  0, 25,  0, 25, -1, 25,  0, 50],
+      /* Hat     */ [ -1, 50, -1, -1, -1, 75, -1, -1, -1, 50, -1, -1, -1, 75, -1, -1],
+      /* Op Hat  */ [  0,  0,  0,  0,  0,  0,  0, 50,  0,  0,  0,  0,  0,  0, 50, 25],
+      /* Clap    */ [  0,  0,  0,  0, -1,  0,  0,  0,  0,  0,  0,  0, -1,  0,  0,  0],
+      /* Hi Tom  */ [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 50, 75,  0],
+      /* Lo Tom  */ [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 50, 75],
+    ]
+  },
+  'Trap Roll': {
+    bpm: 140,
+    //            step:  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+    pattern: [
+      /* Kick    */ [ -1,  0,  0,  0,  0,  0, -1, 25,  0,  0, 25,  0,  0,  0, 50,  0],
+      /* Snare   */ [  0,  0,  0,  0,  0,  0,  0,  0, -1,  0,  0,  0,  0,  0,  0, 25],
+      /* Hat     */ [ -1, 50, -1, 75, -1, 50, -1, 75, -1, 75, -1, 75, -1, 75, 50, 75],
+      /* Op Hat  */ [  0,  0,  0,  0, 50,  0,  0,  0,  0,  0,  0,  0, 50,  0,  0,  0],
+      /* Clap    */ [  0,  0,  0,  0,  0,  0,  0,  0, -1,  0,  0,  0,  0,  0,  0,  0],
+      /* Hi Tom  */ [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+      /* Lo Tom  */ [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+    ]
+  }
+};
+
 // State — pattern values: 0=off, -1=on(row prob), 1-99=per-cell override
 let pattern = drums.map(() => Array(STEPS).fill(0));
-let playing = false, currentStep = -1, bpm = 120, swing = 0;
+let playing = false, currentStep = -1, bpm = 95;
 let timerId = null, nextStepTime = 0;
 let cellEls = [], playheadEls = [], editingDrum = -1;
 
@@ -594,7 +641,6 @@ let cellEls = [], playheadEls = [], editingDrum = -1;
 const appEl = $('app'), gridEl = $('grid'), padsEl = $('pads'), editorEl = $('editor');
 const playBtn = $('playBtn'), combosEl = $('combos');
 const bpmSlider = $('bpmSlider'), bpmVal = $('bpmVal');
-const swingSlider = $('swingSlider'), swingVal = $('swingVal');
 const presetSelect = $('presetSelect'), saveDot = $('saveDot');
 
 // Probability helpers
@@ -879,8 +925,7 @@ function stepInterval() { return 60 / bpm / 4; }
 function scheduler() {
   while (nextStepTime < ctx.currentTime + 0.05) {
     currentStep = (currentStep + 1) % STEPS;
-    const swingOffset = currentStep % 2 === 1 ? stepInterval() * (swing / 100) * 0.7 : 0;
-    const time = nextStepTime + swingOffset;
+    const time = nextStepTime;
 
     drums.forEach((drum, row) => {
       const eff = effectiveProb(row, currentStep);
@@ -937,11 +982,6 @@ bpmSlider.addEventListener('input', () => {
   bpmVal.textContent = bpm;
 });
 
-swingSlider.addEventListener('input', () => {
-  swing = +swingSlider.value;
-  swingVal.textContent = swing + '%';
-});
-
 $('addDrumBtn').addEventListener('click', addDrum);
 
 document.addEventListener('keydown', e => {
@@ -956,15 +996,19 @@ let currentPreset = '';  // name of loaded preset, '' = unsaved
 let dirty = false;
 
 function getState() {
-  return { drums: drums.map(d => ({ name: d.name, key: d.key, color: d.color, prob: d.prob, layers: d.layers })), pattern, bpm, swing };
+  return { drums: drums.map(d => ({ name: d.name, key: d.key, color: d.color, prob: d.prob, layers: d.layers })), pattern, bpm };
 }
 
 function loadState(state) {
-  drums.length = 0;
-  state.drums.forEach(d => drums.push(d));
+  // only replace drums if the preset includes them (user-saved presets do, built-ins don't)
+  if (state.drums && state.drums.length) {
+    drums.length = 0;
+    state.drums.forEach(d => drums.push(d));
+  }
   pattern = state.pattern || drums.map(() => Array(STEPS).fill(0));
+  // pad pattern to match drum count (if preset has fewer rows than current kit)
+  while (pattern.length < drums.length) pattern.push(Array(STEPS).fill(0));
   if (state.bpm) { bpm = state.bpm; bpmSlider.value = bpm; bpmVal.textContent = bpm; }
-  if (state.swing != null) { swing = state.swing; swingSlider.value = swing; swingVal.textContent = swing + '%'; }
   editingDrum = -1;
   editorEl.classList.remove('open');
   appEl.classList.remove('editor-open');
@@ -1000,7 +1044,6 @@ rebuildUI = function() { _rebuildUI(); updateCombos(); onChange(); };
 
 gridEl.addEventListener('mouseup', () => { updateCombos(); onChange(); });
 bpmSlider.addEventListener('change', onChange);
-swingSlider.addEventListener('change', onChange);
 
 // Named presets
 function getPresets() {
@@ -1083,7 +1126,21 @@ presetSelect.addEventListener('change', () => {
   }
 });
 
+// Seed built-in presets if none exist
+function seedBuiltins() {
+  const existing = getPresets();
+  let seeded = false;
+  for (const name in BUILTIN_PRESETS) {
+    if (!(name in existing)) {
+      existing[name] = BUILTIN_PRESETS[name];
+      seeded = true;
+    }
+  }
+  if (seeded) savePresets(existing);
+}
+
 // Init
+seedBuiltins();
 refreshPresetList();
 rebuildUI();
 try {
@@ -1094,6 +1151,14 @@ try {
     dirty = false;
     saveDot.classList.remove('dirty');
     refreshPresetList(currentPreset);
+  } else {
+    // first visit — load the first built-in preset
+    const firstPreset = Object.keys(BUILTIN_PRESETS)[0];
+    currentPreset = firstPreset;
+    loadState(BUILTIN_PRESETS[firstPreset]);
+    dirty = false;
+    saveDot.classList.remove('dirty');
+    refreshPresetList(firstPreset);
   }
 } catch {}
 </script>
